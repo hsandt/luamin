@@ -1,6 +1,14 @@
 /*! https://mths.be/luamin v1.0.4 by @mathias */
 ;(function(root) {
 
+	// MODIFIED: options
+	var global_options = {
+		allowForceIdentifierGeneration: false,
+		preserveNewLines: true,
+		forceIdentifierGenerationForMembers: false,
+		forceIdentifierGenerationForTableKeyStrings: false,
+	}
+
 	// Detect free variables `exports`
 	var freeExports = typeof exports == 'object' && exports;
 
@@ -39,11 +47,11 @@
 		'^': 10
 	};
 
+	// MODIFIED: removed upper-case letters to avoid conflicts with existing vars
+	// and keywords on pico8 lower-case transformation (to integrate in fork)
 	var IDENTIFIER_PARTS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a',
 		'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
-		'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E',
-		'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
-		'U', 'V', 'W', 'X', 'Y', 'Z', '_'];
+		'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '_'];
 	var IDENTIFIER_PARTS_MAX = IDENTIFIER_PARTS.length - 1;
 
 	var each = function(array, fn) {
@@ -245,7 +253,8 @@
 
 		if (expressionType == 'Identifier') {
 
-			result = expression.isLocal && !options.preserveIdentifiers
+			// MODIFIED: added option to force identifier generation for some expressions
+			result = expression.isLocal && !options.preserveIdentifiers || global_options.allowForceIdentifierGeneration && options.forceIdentifierGeneration
 				? generateIdentifier(expression.name)
 				: expression.name;
 
@@ -369,7 +378,10 @@
 
 			result = formatBase(expression.base) + expression.indexer +
 				formatExpression(expression.identifier, {
-					'preserveIdentifiers': true
+					'preserveIdentifiers': true,
+					// MODIFIED: force identifier shortening for members (will break code if there are dynamic key access table[key])
+					//           requires to toggle forceIdentifierGeneration
+					'forceIdentifierGeneration': global_options.forceIdentifierGenerationForMembers
 				});
 
 		} else if (expressionType == 'FunctionDeclaration') {
@@ -403,7 +415,10 @@
 				} else { // at this point, `field.type == 'TableKeyString'`
 					result += formatExpression(field.key, {
 						// TODO: keep track of nested scopes (#18)
-						'preserveIdentifiers': true
+						'preserveIdentifiers': true,
+						// MODIFIED: force identifier shortening for members (will break code if there are dynamic key access table[key])
+						//           requires to toggle forceIdentifierGeneration
+						'forceIdentifierGeneration': global_options.forceIdentifierGenerationForTableKeyStrings
 					}) + '=' + formatExpression(field.value);
 				}
 				if (needsComma) {
@@ -425,7 +440,12 @@
 	var formatStatementList = function(body) {
 		var result = '';
 		each(body, function(statement) {
-			result = joinStatements(result, formatStatement(statement), ';');
+			// MODIFIED: added option to preserve newlines
+			if (global_options.preserveNewLines) {
+				result = joinStatements(result, formatStatement(statement), '\n');
+			} else {
+				result = joinStatements(result, formatStatement(statement), ';');
+			}
 		});
 		return result;
 	};
