@@ -8,6 +8,8 @@
 	var isFile = false;
 	var isAST = false;
 	var newlineSeparator = false;
+	var minifyMemberNames = false;
+	var minifyTableKeyStrings = false;
 	var stdin = process.stdin;
 	var data;
 	var log = console.log;
@@ -21,6 +23,8 @@
 		"file": Boolean,
 		"ast": Boolean,
 		"newline-separator": Boolean,
+		"minify-member-names": Boolean,
+		"minify-table-key-strings": Boolean,
 		"version": Boolean,
 		"help": Boolean,
 	};
@@ -32,6 +36,8 @@
 		"f": ["--file"],
 		"a": ["--ast"],
 		"n": ["--newline-separator"],
+		"m": ["--minify-member-names"],
+		"k": ["--minify-table-key-strings"],
 		"v": ["--version"],
 		"h": ["--help"]
 	}
@@ -55,12 +61,17 @@
 				'  luamin [-h | --help]',
 				'\nOptions:\n',
 				"  -n, --newline-separator\tjoin statements with '\\n' instead of ';'",
+				'  -m, --minify-member-names\tforce minification of member expressions',
+				'  -k, --minify-table-key-strings\tforce minification of table key strings',
 				'\nExamples:\n',
 				'  luamin -c \'a = ((1 + 2) - 3) * (4 / (5 ^ 6))\'',
 				'  luamin -f foo.lua',
 				'  echo \'a = "foo" .. "bar"\' | luamin -c -',
 				'  luaparse --scope \'a = 42\' | luamin -a -',
-				'  lumain -cn \'a = 5; b = 6\''
+				'  luamin -cn \'a = 5; b = 6\'',
+				'  luamin -cm \'t.key = 6; t._preserved = 7; t["preserved"] = 8\'',
+				'  luamin -ck \'t = { key = 6, _preserved = 7, ["preserved"] = 8 }\'',
+				'  luamin -cmk \'t = { key = 6, _preserved = 7, ["preserved"] = 8 }; t.key = 0\''
 			].join('\n'));
 			return process.exit(1);
 		}
@@ -85,6 +96,14 @@
 			newlineSeparator = true;
 		}
 
+		if (parsed['minify-member-names']) {
+			minifyMemberNames = true;
+		}
+
+		if (parsed['minify-table-key-strings']) {
+			minifyTableKeyStrings = true;
+		}
+
 		if (snippets.length == 0) {
 			err('Error: at least 1 positional argument must be provided ' +
 				'when using --file, --ast or --code.');
@@ -107,7 +126,9 @@
 					snippet = JSON.parse(snippet);
 				}
 				var baseOptions = {
-					'newlineSeparator': newlineSeparator
+					'newlineSeparator': newlineSeparator,
+					'minifyMemberNames': minifyMemberNames,
+					'minifyTableKeyStrings': minifyTableKeyStrings
 				}
 				result = minify(snippet, baseOptions);
 				log(result);

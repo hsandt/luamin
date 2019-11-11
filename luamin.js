@@ -233,7 +233,8 @@
 
 		var options = extend({
 			'precedence': 0,
-			'preserveIdentifiers': false
+			'preserveIdentifiers': false,
+			'forceGenerateIdentifiers': false
 		}, baseOptions);
 
 		var result = '';
@@ -245,7 +246,9 @@
 
 		if (expressionType == 'Identifier') {
 
-			result = expression.isLocal && !options.preserveIdentifiers
+			// forceGenerateIdentifiers has precedence over preserveIdentifiers
+			result = options.forceGenerateIdentifiers ||
+				(expression.isLocal && !options.preserveIdentifiers)
 				? generateIdentifier(expression.name)
 				: expression.name;
 
@@ -369,7 +372,9 @@
 
 			result = formatBase(expression.base, baseOptions) + expression.indexer +
 				formatExpression(expression.identifier, extend({
-					'preserveIdentifiers': true
+					'preserveIdentifiers': true,
+					'forceGenerateIdentifiers': baseOptions.minifyMemberNames &&
+						!expression.identifier.name.startsWith("_")  // members accessed dynamically must start with "_"
 				}, baseOptions));
 
 		} else if (expressionType == 'FunctionDeclaration') {
@@ -401,9 +406,16 @@
 				} else if (field.type == 'TableValue') {
 					result += formatExpression(field.value, baseOptions);
 				} else { // at this point, `field.type == 'TableKeyString'`
+					// Aggressive minification note: this will only affect key strings without square brackets or quotes
+					//   ex: t = { key1 = 1, key2 = 2 }
+					// Strings inside square brackets are handled above, so you can use that to preserve
+					//   key identifiers you intend to access dynamically via string, instead of starting them all with "_"
+					//   ex: t = { ["key1_preserved"] = 1 }
 					result += formatExpression(field.key, extend({
 						// TODO: keep track of nested scopes (#18)
-						'preserveIdentifiers': true
+						'preserveIdentifiers': true,
+						'forceGenerateIdentifiers': baseOptions.minifyTableKeyStrings  &&
+							!field.key.name.startsWith("_")  // members accessed dynamically must start with "_"
 					}, baseOptions)) + '=' + formatExpression(field.value, baseOptions);
 				}
 				if (needsComma) {
