@@ -289,6 +289,11 @@
 			}
 
 			if (
+				// Defensive fix for https://github.com/mathiasbynens/luamin/issues/50
+				// This will preserve brackets in expressions such as 1+6*(i-1) as we want,
+				// but also in (1+(2+3))+4 as we don't (but minified expression will remain correct).
+				currentPrecedence <= options.precedence
+				/*
 				currentPrecedence < options.precedence ||
 				(
 					currentPrecedence == options.precedence &&
@@ -296,6 +301,7 @@
 					options.parent != '+' &&
 					!(options.parent == '*' && (operator == '/' || operator == '*'))
 				)
+				*/
 			) {
 				// The most simple case here is that of
 				// protecting the parentheses on the RHS of
