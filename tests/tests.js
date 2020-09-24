@@ -2100,6 +2100,16 @@
 			}
 		],
 
+		// Preferences
+		'Preferences': [
+			{
+				'description': 'NewlineSeparator',
+				'original': 'a = 1 function f(x) end b = 2',
+				'minified': 'a=1\nfunction f(c)end\nb=2',
+				'preferences': {'newlineSeparator': true},
+			}
+		],
+
 		// Miscellaneous
 		'Miscellaneous': [
 			{
@@ -2167,7 +2177,7 @@
 				forEach(items, function(item) {
 					raises(
 						function() {
-							minify(item.original);
+							minify(item.original, item.preferences);
 						},
 						item.error,
 						item.description
@@ -2176,7 +2186,7 @@
 			} else {
 				forEach(items, function(item) {
 					equal(
-						minify(item.original),
+						minify(item.original, item.preferences),
 						item.minified,
 						item.description
 					);

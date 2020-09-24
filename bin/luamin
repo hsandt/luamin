@@ -125,12 +125,12 @@
 				if (isAST) {
 					snippet = JSON.parse(snippet);
 				}
-				var baseOptions = {
+				var preferences = {
 					'newlineSeparator': newlineSeparator,
 					'minifyMemberNames': minifyMemberNames,
 					'minifyTableKeyStrings': minifyTableKeyStrings
 				}
-				result = minify(snippet, baseOptions);
+				result = minify(snippet, preferences);
 				log(result);
 			} catch(error) {
 				err(error.message + '\n');
