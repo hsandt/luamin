@@ -105,10 +105,10 @@
 				if (isAST) {
 					snippet = JSON.parse(snippet);
 				}
-				var baseOptions = {
+				var preferences = {
 					'newlineSeparator': newlineSeparator
 				}
-				result = minify(snippet, baseOptions);
+				result = minify(snippet, preferences);
 				log(result);
 			} catch(error) {
 				log(error.message + '\n');

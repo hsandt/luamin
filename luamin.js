@@ -209,7 +209,7 @@
 		return a + b;
 	};
 
-	var formatBase = function(base, baseOptions) {
+	var formatBase = function(base, preferences) {
 		var result = '';
 		var type = base.type;
 		var needsParens = base.inParens && (
@@ -222,19 +222,19 @@
 		if (needsParens) {
 			result += '(';
 		}
-		result += formatExpression(base, baseOptions);
+		result += formatExpression(base, preferences);
 		if (needsParens) {
 			result += ')';
 		}
 		return result;
 	};
 
-	var formatExpression = function(expression, baseOptions) {
+	var formatExpression = function(expression, preferences, options) {
 
-		var options = extend({
+		options = extend({
 			'precedence': 0,
 			'preserveIdentifiers': false
-		}, baseOptions);
+		}, options);
 
 		var result = '';
 		var currentPrecedence;
@@ -271,17 +271,17 @@
 			currentPrecedence = PRECEDENCE[operator];
 			associativity = 'left';
 
-			result = formatExpression(expression.left, extend({
+			result = formatExpression(expression.left, preferences, {
 				'precedence': currentPrecedence,
 				'direction': 'left',
 				'parent': operator
-			}, baseOptions));
+			});
 			result = joinStatements(result, operator);
-			result = joinStatements(result, formatExpression(expression.right, extend({
+			result = joinStatements(result, formatExpression(expression.right, preferences, {
 				'precedence': currentPrecedence,
 				'direction': 'right',
 				'parent': operator
-			}, baseOptions)));
+			}));
 
 			if (operator == '^' || operator == '..') {
 				associativity = "right";
@@ -317,9 +317,9 @@
 
 			result = joinStatements(
 				operator,
-				formatExpression(expression.argument, extend({
+				formatExpression(expression.argument, preferences, {
 					'precedence': currentPrecedence
-				}, baseOptions))
+				})
 			);
 
 			if (
@@ -340,10 +340,10 @@
 
 		} else if (expressionType == 'CallExpression') {
 
-			result = formatBase(expression.base, baseOptions) + '(';
+			result = formatBase(expression.base, preferences) + '(';
 
 			each(expression.arguments, function(argument, needsComma) {
-				result += formatExpression(argument, baseOptions);
+				result += formatExpression(argument, preferences);
 				if (needsComma) {
 					result += ',';
 				}
@@ -352,25 +352,25 @@
 
 		} else if (expressionType == 'TableCallExpression') {
 
-			result = formatExpression(expression.base, baseOptions) +
-				formatExpression(expression.arguments, baseOptions);
+			result = formatExpression(expression.base, preferences) +
+				formatExpression(expression.arguments, preferences);
 
 		} else if (expressionType == 'StringCallExpression') {
 
-			result = formatExpression(expression.base, baseOptions) +
-				formatExpression(expression.argument, baseOptions);
+			result = formatExpression(expression.base, preferences) +
+				formatExpression(expression.argument, preferences);
 
 		} else if (expressionType == 'IndexExpression') {
 
-			result = formatBase(expression.base, baseOptions) + '[' +
-				formatExpression(expression.index, baseOptions) + ']';
+			result = formatBase(expression.base, preferences) + '[' +
+				formatExpression(expression.index, preferences) + ']';
 
 		} else if (expressionType == 'MemberExpression') {
 
-			result = formatBase(expression.base, baseOptions) + expression.indexer +
-				formatExpression(expression.identifier, extend({
+			result = formatBase(expression.base, preferences) + expression.indexer +
+				formatExpression(expression.identifier, preferences, {
 					'preserveIdentifiers': true
-				}, baseOptions));
+				});
 
 		} else if (expressionType == 'FunctionDeclaration') {
 
@@ -387,7 +387,7 @@
 				});
 			}
 			result += ')';
-			result = joinStatements(result, formatStatementList(expression.body, baseOptions));
+			result = joinStatements(result, formatStatementList(expression.body, preferences));
 			result = joinStatements(result, 'end');
 
 		} else if (expressionType == 'TableConstructorExpression') {
@@ -396,15 +396,15 @@
 
 			each(expression.fields, function(field, needsComma) {
 				if (field.type == 'TableKey') {
-					result += '[' + formatExpression(field.key, baseOptions) + ']=' +
-						formatExpression(field.value, baseOptions);
+					result += '[' + formatExpression(field.key, preferences) + ']=' +
+						formatExpression(field.value, preferences);
 				} else if (field.type == 'TableValue') {
-					result += formatExpression(field.value, baseOptions);
+					result += formatExpression(field.value, preferences);
 				} else { // at this point, `field.type == 'TableKeyString'`
-					result += formatExpression(field.key, extend({
+					result += formatExpression(field.key, preferences, {
 						// TODO: keep track of nested scopes (#18)
 						'preserveIdentifiers': true
-					}, baseOptions)) + '=' + formatExpression(field.value, baseOptions);
+					}) + '=' + formatExpression(field.value, preferences);
 				}
 				if (needsComma) {
 					result += ',';
@@ -422,16 +422,21 @@
 		return result;
 	};
 
-	var formatStatementList = function(body, baseOptions) {
+	var formatStatementList = function(body, preferences) {
+		// define default preferences
+		preferences = extend({
+			'newlineSeparator': false,
+		}, preferences);
+
 		var result = '';
 		each(body, function(statement) {
-			var separator = baseOptions.newlineSeparator ? '\n' : ';';
-			result = joinStatements(result, formatStatement(statement, baseOptions), separator);
+			var separator = preferences.newlineSeparator ? '\n' : ';';
+			result = joinStatements(result, formatStatement(statement, preferences), separator);
 		});
 		return result;
 	};
 
-	var formatStatement = function(statement, baseOptions) {
+	var formatStatement = function(statement, preferences) {
 		var result = '';
 		var statementType = statement.type;
 
@@ -439,7 +444,7 @@
 
 			// left-hand side
 			each(statement.variables, function(variable, needsComma) {
-				result += formatExpression(variable, baseOptions);
+				result += formatExpression(variable, preferences);
 				if (needsComma) {
 					result += ',';
 				}
@@ -448,7 +453,7 @@
 			// right-hand side
 			result += '=';
 			each(statement.init, function(init, needsComma) {
-				result += formatExpression(init, baseOptions);
+				result += formatExpression(init, preferences);
 				if (needsComma) {
 					result += ',';
 				}
@@ -471,7 +476,7 @@
 			if (statement.init.length) {
 				result += '=';
 				each(statement.init, function(init, needsComma) {
-					result += formatExpression(init, baseOptions);
+					result += formatExpression(init, preferences);
 					if (needsComma) {
 						result += ',';
 					}
@@ -480,41 +485,41 @@
 
 		} else if (statementType == 'CallStatement') {
 
-			result = formatExpression(statement.expression, baseOptions);
+			result = formatExpression(statement.expression, preferences);
 
 		} else if (statementType == 'IfStatement') {
 
 			result = joinStatements(
 				'if',
-				formatExpression(statement.clauses[0].condition, baseOptions)
+				formatExpression(statement.clauses[0].condition, preferences)
 			);
 			result = joinStatements(result, 'then');
 			result = joinStatements(
 				result,
-				formatStatementList(statement.clauses[0].body, baseOptions)
+				formatStatementList(statement.clauses[0].body, preferences)
 			);
 			each(statement.clauses.slice(1), function(clause) {
 				if (clause.condition) {
 					result = joinStatements(result, 'elseif');
-					result = joinStatements(result, formatExpression(clause.condition, baseOptions));
+					result = joinStatements(result, formatExpression(clause.condition, preferences));
 					result = joinStatements(result, 'then');
 				} else {
 					result = joinStatements(result, 'else');
 				}
-				result = joinStatements(result, formatStatementList(clause.body, baseOptions));
+				result = joinStatements(result, formatStatementList(clause.body, preferences));
 			});
 			result = joinStatements(result, 'end');
 
 		} else if (statementType == 'WhileStatement') {
 
-			result = joinStatements('while', formatExpression(statement.condition, baseOptions));
+			result = joinStatements('while', formatExpression(statement.condition, preferences));
 			result = joinStatements(result, 'do');
-			result = joinStatements(result, formatStatementList(statement.body, baseOptions));
+			result = joinStatements(result, formatStatementList(statement.body, preferences));
 			result = joinStatements(result, 'end');
 
 		} else if (statementType == 'DoStatement') {
 
-			result = joinStatements('do', formatStatementList(statement.body, baseOptions));
+			result = joinStatements('do', formatStatementList(statement.body, preferences));
 			result = joinStatements(result, 'end');
 
 		} else if (statementType == 'ReturnStatement') {
@@ -522,7 +527,7 @@
 			result = 'return';
 
 			each(statement.arguments, function(argument, needsComma) {
-				result = joinStatements(result, formatExpression(argument, baseOptions));
+				result = joinStatements(result, formatExpression(argument, preferences));
 				if (needsComma) {
 					result += ',';
 				}
@@ -534,14 +539,14 @@
 
 		} else if (statementType == 'RepeatStatement') {
 
-			result = joinStatements('repeat', formatStatementList(statement.body, baseOptions));
+			result = joinStatements('repeat', formatStatementList(statement.body, preferences));
 			result = joinStatements(result, 'until');
-			result = joinStatements(result, formatExpression(statement.condition, baseOptions))
+			result = joinStatements(result, formatExpression(statement.condition, preferences))
 
 		} else if (statementType == 'FunctionDeclaration') {
 
 			result = (statement.isLocal ? 'local ' : '') + 'function ';
-			result += formatExpression(statement.identifier, baseOptions);
+			result += formatExpression(statement.identifier, preferences);
 			result += '(';
 
 			if (statement.parameters.length) {
@@ -557,7 +562,7 @@
 			}
 
 			result += ')';
-			result = joinStatements(result, formatStatementList(statement.body, baseOptions));
+			result = joinStatements(result, formatStatementList(statement.body, preferences));
 			result = joinStatements(result, 'end');
 
 		} else if (statementType == 'ForGenericStatement') {
@@ -576,29 +581,29 @@
 			result += ' in';
 
 			each(statement.iterators, function(iterator, needsComma) {
-				result = joinStatements(result, formatExpression(iterator, baseOptions));
+				result = joinStatements(result, formatExpression(iterator, preferences));
 				if (needsComma) {
 					result += ',';
 				}
 			});
 
 			result = joinStatements(result, 'do');
-			result = joinStatements(result, formatStatementList(statement.body, baseOptions));
+			result = joinStatements(result, formatStatementList(statement.body, preferences));
 			result = joinStatements(result, 'end');
 
 		} else if (statementType == 'ForNumericStatement') {
 
 			// The variables in a `ForNumericStatement` are always local
 			result = 'for ' + generateIdentifier(statement.variable.name) + '=';
-			result += formatExpression(statement.start, baseOptions) + ',' +
-				formatExpression(statement.end, baseOptions);
+			result += formatExpression(statement.start, preferences) + ',' +
+				formatExpression(statement.end, preferences);
 
 			if (statement.step) {
-				result += ',' + formatExpression(statement.step, baseOptions);
+				result += ',' + formatExpression(statement.step, preferences);
 			}
 
 			result = joinStatements(result, 'do');
-			result = joinStatements(result, formatStatementList(statement.body, baseOptions));
+			result = joinStatements(result, formatStatementList(statement.body, preferences));
 			result = joinStatements(result, 'end');
 
 		} else if (statementType == 'LabelStatement') {
@@ -620,12 +625,7 @@
 		return result;
 	};
 
-	var minify = function(argument, baseOptions) {
-		// define base options defaults
-		baseOptions = extend({
-			'newlineSeparator': false,
-		}, baseOptions);
-
+	var minify = function(argument, preferences) {
 		// `argument` can be a Lua code snippet (string)
 		// or a luaparse-compatible AST (object)
 		var ast = typeof argument == 'string'
@@ -649,7 +649,7 @@
 			throw Error('Missing required AST property: `globals`');
 		}
 
-		return formatStatementList(ast.body, baseOptions);
+		return formatStatementList(ast.body, preferences);
 	};
 
 	/*--------------------------------------------------------------------------*/
