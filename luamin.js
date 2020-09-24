@@ -370,11 +370,17 @@
 
 		} else if (expressionType == 'MemberExpression') {
 
+			// Aggressive minification note: this will only affect key strings without square brackets or quotes
+			//   ex: t = { key1 = 1, key2 = 2 }
+			// Strings inside square brackets are handled above, so you can use that to preserve
+			//   key identifiers you intend to access dynamically via string.
+			// Alternatively, you can protect names from shortening by starting them with "_"
+			//   ex: t = { ["key1_preserved"] = 1 }
 			result = formatBase(expression.base, preferences) + expression.indexer +
 				formatExpression(expression.identifier, preferences, {
 					'preserveIdentifiers': true,
 					'forceGenerateIdentifiers': preferences.minifyMemberNames &&
-						!expression.identifier.name.startsWith("_")  // members accessed
+						expression.identifier.name.substr(0, 1) != "_"
 				});
 
 		} else if (expressionType == 'FunctionDeclaration') {
@@ -406,16 +412,12 @@
 				} else if (field.type == 'TableValue') {
 					result += formatExpression(field.value, preferences);
 				} else { // at this point, `field.type == 'TableKeyString'`
-					// Aggressive minification note: this will only affect key strings without square brackets or quotes
-					//   ex: t = { key1 = 1, key2 = 2 }
-					// Strings inside square brackets are handled above, so you can use that to preserve
-					//   key identifiers you intend to access dynamically via string, instead of starting them all with "_"
-					//   ex: t = { ["key1_preserved"] = 1 }
+					// see MemberExpression case above for explanations about forceGenerateIdentifiers
 					result += formatExpression(field.key, preferences, {
 						// TODO: keep track of nested scopes (#18)
 						'preserveIdentifiers': true,
 						'forceGenerateIdentifiers': preferences.minifyTableKeyStrings  &&
-							!field.key.name.startsWith("_")  // members accessed dynamically must start with "_"
+							field.key.name.substr(0, 1) != "_"
 					}) + '=' + formatExpression(field.value, preferences);
 				}
 				if (needsComma) {
