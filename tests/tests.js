@@ -2239,8 +2239,8 @@
 	/*--------------------------------------------------------------------------*/
 
 	// configure QUnit and call `QUnit.start()` for
-	// Node.js, PhantomJS, Rhino, and RingoJS
-	if (!root.document || root.phantom) {
+	// Node.js, Rhino, and RingoJS
+	if (!root.document) {
 		QUnit.config.noglobals = true;
 		QUnit.start();
 	}
