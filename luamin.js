@@ -621,6 +621,11 @@
 	};
 
 	var minify = function(argument, baseOptions) {
+		// define base options defaults
+		baseOptions = extend({
+			'newlineSeparator': false,
+		}, baseOptions);
+
 		// `argument` can be a Lua code snippet (string)
 		// or a luaparse-compatible AST (object)
 		var ast = typeof argument == 'string'
