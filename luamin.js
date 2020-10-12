@@ -246,9 +246,13 @@
 
 		if (expressionType == 'Identifier') {
 
-			// forceGenerateIdentifiers has precedence over preserveIdentifiers
+			// forceGenerateIdentifiers has precedence over the rest
+			// Do not minify global variables, unless we force global variable minification and
+			// they don't start with '_'. Note that the minify function has already checked for '_' on all globals
+			// to pre-fill identifierMap and identifiersInUse, so the check is optional here as generateIdentifier
+			// would immediately find the mapping for the protected name. But it allows us to avoid an extra call to generateIdentifier.
 			result = options.forceGenerateIdentifiers ||
-				(expression.isLocal && !options.preserveIdentifiers)
+				((expression.isLocal || preferences.minifyGlobalVars && expression.name.substr(0, 1) != "_") && !options.preserveIdentifiers)
 				? generateIdentifier(expression.name)
 				: expression.name;
 
@@ -437,11 +441,6 @@
 	};
 
 	var formatStatementList = function(body, preferences) {
-		// define default preferences
-		preferences = extend({
-			'newlineSeparator': false,
-		}, preferences);
-
 		var result = '';
 		each(body, function(statement) {
 			var separator = preferences.newlineSeparator ? '\n' : ';';
@@ -640,6 +639,14 @@
 	};
 
 	var minify = function(argument, preferences) {
+		// define default preferences
+		preferences = extend({
+			'newlineSeparator': false,
+			'minifyMemberNames': false,
+			'minifyTableKeyStrings': false,
+			'minifyGlobalVars': false,
+		}, preferences);
+
 		// `argument` can be a Lua code snippet (string)
 		// or a luaparse-compatible AST (object)
 		var ast = typeof argument == 'string'
@@ -653,11 +660,14 @@
 		currentIdentifier = '9';
 
 		// Make sure global variable names aren't renamed
+		// unless we want to minify global variables and the name doesn't start with '_'
 		if (ast.globals) {
 			each(ast.globals, function(object) {
 				var name = object.name;
-				identifierMap[name] = name;
-				identifiersInUse.push(name);
+				if (!preferences.minifyGlobalVars || name.substr(0, 1) == "_") {
+					identifierMap[name] = name;
+					identifiersInUse.push(name);
+				}
 			});
 		} else {
 			throw Error('Missing required AST property: `globals`');

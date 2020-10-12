@@ -10,6 +10,7 @@
 	var newlineSeparator = false;
 	var minifyMemberNames = false;
 	var minifyTableKeyStrings = false;
+	var minifyGlobalVars = false;
 	var stdin = process.stdin;
 	var data;
 	var log = console.log;
@@ -25,6 +26,7 @@
 		"newline-separator": Boolean,
 		"minify-member-names": Boolean,
 		"minify-table-key-strings": Boolean,
+		"minify-global-vars": Boolean,
 		"version": Boolean,
 		"help": Boolean,
 	};
@@ -38,6 +40,7 @@
 		"n": ["--newline-separator"],
 		"m": ["--minify-member-names"],
 		"k": ["--minify-table-key-strings"],
+		"g": ["--minify-global-vars"],
 		"v": ["--version"],
 		"h": ["--help"]
 	}
@@ -61,8 +64,9 @@
 				'  luamin [-h | --help]',
 				'\nOptions:\n',
 				"  -n, --newline-separator\tjoin statements with '\\n' instead of ';'",
-				'  -m, --minify-member-names\tforce minification of member expressions',
-				'  -k, --minify-table-key-strings\tforce minification of table key strings',
+				'  -m, --minify-member-names\tforce minification of member expressions not starting with \'_\'',
+				'  -k, --minify-table-key-strings\tforce minification of table key strings not starting with \'_\'',
+				'  -g, --minify-global-vars\tforce minification of global variables not starting with \'_\'',
 				'\nExamples:\n',
 				'  luamin -c \'a = ((1 + 2) - 3) * (4 / (5 ^ 6))\'',
 				'  luamin -f foo.lua',
@@ -71,7 +75,8 @@
 				'  luamin -cn \'a = 5; b = 6\'',
 				'  luamin -cm \'t.key = 6; t._preserved = 7; t["preserved"] = 8\'',
 				'  luamin -ck \'t = { key = 6, _preserved = 7, ["preserved"] = 8 }\'',
-				'  luamin -cmk \'t = { key = 6, _preserved = 7, ["preserved"] = 8 }; t.key = 0\''
+				'  luamin -cmk \'t = { key = 6, _preserved = 7, ["preserved"] = 8 }; t.key = 0\'',
+				'  luamin -cg \'minified_global = 1; _protected_global = 2\''
 			].join('\n'));
 			return process.exit(1);
 		}
@@ -104,6 +109,10 @@
 			minifyTableKeyStrings = true;
 		}
 
+		if (parsed['minify-global-vars']) {
+			minifyGlobalVars = true;
+		}
+
 		if (snippets.length == 0) {
 			err('Error: at least 1 positional argument must be provided ' +
 				'when using --file, --ast or --code.');
@@ -128,7 +137,8 @@
 				var preferences = {
 					'newlineSeparator': newlineSeparator,
 					'minifyMemberNames': minifyMemberNames,
-					'minifyTableKeyStrings': minifyTableKeyStrings
+					'minifyTableKeyStrings': minifyTableKeyStrings,
+					'minifyGlobalVars': minifyGlobalVars
 				}
 				result = minify(snippet, preferences);
 				log(result);

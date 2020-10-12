@@ -2105,7 +2105,7 @@
 			{
 				'description': 'Identifier in TableKeyString should not be shortened by default',
 				'original': 'local t = {num = 2}',
-				'minified': 'local a={num=2}',
+				'minified': 'local a={num=2}'
 			},
 			{
 				'description': 'Identifier in TableKeyString should be shortened when using minifyTableKeyStrings',
@@ -2129,6 +2129,23 @@
 				'original': 'local t = {_num = 2}',
 				'minified': 'local a={_num=2}',
 				'preferences': {'minifyTableKeyStrings': true}
+			},
+			{
+				'description': 'Global identifier should not be shortened by default',
+				'original': 'global_var = 1; local a = 2',
+				'minified': 'global_var=1;local a=2'
+			},
+			{
+				'description': 'Global identifier should be shortened when using minifyGlobalVars',
+				'original': 'global_var = 1;local a = 2',
+				'minified': 'a=1;local b=2',
+				'preferences': {'minifyGlobalVars': true}
+			},
+			{
+				'description': 'Global identifier starting with underscore should not be shortened even when using minifyGlobalVars',
+				'original': '_protected_global = 1',
+				'minified': '_protected_global=1',
+				'preferences': {'minifyGlobalVars': true}
 			}
 		],
 
