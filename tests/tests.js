@@ -2136,16 +2136,58 @@
 				'minified': 'global_var=1;local a=2'
 			},
 			{
-				'description': 'Global identifier should be shortened when using minifyGlobalVars',
-				'original': 'global_var = 1;local a = 2',
-				'minified': 'a=1;local b=2',
-				'preferences': {'minifyGlobalVars': true}
+				'description': 'Global identifier assigned before usage should be shortened when using minifyAssignedGlobalVars',
+				'original': 'global_var = 1;local a = global_var + 1',
+				'minified': 'a=1;local b=a+1',
+				'preferences': {'minifyAssignedGlobalVars': true}
 			},
 			{
-				'description': 'Global identifier starting with underscore should not be shortened even when using minifyGlobalVars',
+				'description': 'Global identifier assigned after variables of other kinds should be generated after them in alphabetical order when using minifyAssignedGlobalVars',
+				'original': 'local a = 1;global_var = 2',
+				'minified': 'local a=1;b=2',
+				'preferences': {'minifyAssignedGlobalVars': true}
+			},
+			{
+				'description': 'Global identifier usages before assignment should not be shortened when using minifyAssignedGlobalVars (case to avoid)',
+				'original': 'local a = global_var + 1; global_var = 1; local b = global_var + 2',
+				'minified': 'local a=global_var+1;b=1;local c=b+2',
+				'preferences': {'minifyAssignedGlobalVars': true}
+			},
+			{
+				'description': 'Global identifier assigned before usage and starting with underscore should not be shortened even when using minifyAssignedGlobalVars',
 				'original': '_protected_global = 1',
 				'minified': '_protected_global=1',
-				'preferences': {'minifyGlobalVars': true}
+				'preferences': {'minifyAssignedGlobalVars': true}
+			},
+			{
+				'description': 'Global identifier not assigned, but with same name as a previously minified unrelated symbol should not be shortened when using minifyAssignedGlobalVars',
+				'original': 'if true then local homonymous_var1 = 1 end;homonymous_var1();t.homonymous_var2 = 3;homonymous_var2()',
+				'minified': 'if true then local a=1 end;homonymous_var1()t.b=3;homonymous_var2()',
+				'preferences': {'minifyMemberNames': true, 'minifyAssignedGlobalVars': true}
+			},
+			{
+				'description': 'Global identifier should be shortened when using minifyAllGlobalVars',
+				'original': 'global_var = 1;local a = 2',
+				'minified': 'a=1;local b=2',
+				'preferences': {'minifyAllGlobalVars': true}
+			},
+			{
+				'description': 'Global identifier starting with underscore should not be shortened even when using minifyAllGlobalVars',
+				'original': '_protected_global = 1',
+				'minified': '_protected_global=1',
+				'preferences': {'minifyAllGlobalVars': true}
+			},
+			{
+				'description': 'Global identifier assigned after variables of other kinds should be generated before them in alphabetical order when using minifyAssignedGlobalVars',
+				'original': 'local a = 1;global_var = 2',
+				'minified': 'local b=1;a=2',
+				'preferences': {'minifyAllGlobalVars': true}
+			},
+			{
+				'description': 'Global identifier should be shortened when using both minifyAssignedGlobalVars and minifyAllGlobalVars (the latter covers the first one)',
+				'original': 'global_var = 1;local a = 2',
+				'minified': 'a=1;local b=2',
+				'preferences': {'minifyAssignedGlobalVars': true, 'minifyAllGlobalVars': true}
 			}
 		],
 

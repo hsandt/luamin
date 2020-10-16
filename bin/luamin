@@ -10,7 +10,8 @@
 	var newlineSeparator = false;
 	var minifyMemberNames = false;
 	var minifyTableKeyStrings = false;
-	var minifyGlobalVars = false;
+	var minifyAllGlobalVars = false;
+	var minifyAssignedGlobalVars = false;
 	var stdin = process.stdin;
 	var data;
 	var log = console.log;
@@ -26,7 +27,8 @@
 		"newline-separator": Boolean,
 		"minify-member-names": Boolean,
 		"minify-table-key-strings": Boolean,
-		"minify-global-vars": Boolean,
+		"minify-assigned-global-vars": Boolean,
+		"minify-all-global-vars": Boolean,
 		"version": Boolean,
 		"help": Boolean,
 	};
@@ -40,7 +42,8 @@
 		"n": ["--newline-separator"],
 		"m": ["--minify-member-names"],
 		"k": ["--minify-table-key-strings"],
-		"g": ["--minify-global-vars"],
+		"G": ["--minify-assigned-global-vars"],
+		"g": ["--minify-all-global-vars"],
 		"v": ["--version"],
 		"h": ["--help"]
 	}
@@ -66,7 +69,10 @@
 				"  -n, --newline-separator\tjoin statements with '\\n' instead of ';'",
 				'  -m, --minify-member-names\tforce minification of member expressions not starting with \'_\'',
 				'  -k, --minify-table-key-strings\tforce minification of table key strings not starting with \'_\'',
-				'  -g, --minify-global-vars\tforce minification of global variables not starting with \'_\'',
+				'  -G, --minify-assigned-global-vars\tforce minification of assigned global variables (not native nor defined in external file) not starting with \'_\'.',
+				'                                   \tThis only works when global variables are assigned before usage in the code, so if you need early usage, you should',
+				'                                   \tadd a dummy assignment like `my_global = nil` before any usage in code.',
+				'  -g, --minify-all-global-vars\tforce minification of all global variables not starting with \'_\'. Stronger than --minify-assigned-global-vars, only use one or the other.',
 				'\nExamples:\n',
 				'  luamin -c \'a = ((1 + 2) - 3) * (4 / (5 ^ 6))\'',
 				'  luamin -f foo.lua',
@@ -76,7 +82,8 @@
 				'  luamin -cm \'t.key = 6; t._preserved = 7; t["preserved"] = 8\'',
 				'  luamin -ck \'t = { key = 6, _preserved = 7, ["preserved"] = 8 }\'',
 				'  luamin -cmk \'t = { key = 6, _preserved = 7, ["preserved"] = 8 }; t.key = 0\'',
-				'  luamin -cg \'minified_global = 1; _protected_global = 2\''
+				'  luamin -cG \'minified_global = 1; _protected_global = 2; local minified_alias_for_protected_native = pairs\'',
+				'  luamin -cg \'minified_global = 1; _protected_global = 2; minified_external_global()\''
 			].join('\n'));
 			return process.exit(1);
 		}
@@ -109,8 +116,12 @@
 			minifyTableKeyStrings = true;
 		}
 
-		if (parsed['minify-global-vars']) {
-			minifyGlobalVars = true;
+		if (parsed['minify-assigned-global-vars']) {
+			minifyAssignedGlobalVars = true;
+		}
+
+		if (parsed['minify-all-global-vars']) {
+			minifyAllGlobalVars = true;
 		}
 
 		if (snippets.length == 0) {
@@ -138,7 +149,8 @@
 					'newlineSeparator': newlineSeparator,
 					'minifyMemberNames': minifyMemberNames,
 					'minifyTableKeyStrings': minifyTableKeyStrings,
-					'minifyGlobalVars': minifyGlobalVars
+					'minifyAssignedGlobalVars': minifyAssignedGlobalVars,
+					'minifyAllGlobalVars': minifyAllGlobalVars
 				}
 				result = minify(snippet, preferences);
 				log(result);
