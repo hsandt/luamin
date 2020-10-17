@@ -2129,21 +2129,25 @@
 				'original': 'local t = {_num = 2}',
 				'minified': 'local a={_num=2}',
 				'preferences': {'minifyTableKeyStrings': true}
-			},
+			}
+		],
+
+		// Global
+		'Global': [
 			{
 				'description': 'Global identifier should not be shortened by default',
 				'original': 'global_var = 1; local a = 2',
 				'minified': 'global_var=1;local a=2'
 			},
 			{
-				'description': 'Global identifier assigned before usage should be shortened when using minifyAssignedGlobalVars',
-				'original': 'global_var = 1;local a = global_var + 1',
+				'description': 'Global identifier assigned and further usage should be shortened when using minifyAssignedGlobalVars',
+				'original': 'global_var = 1; local a = global_var + 1',
 				'minified': 'a=1;local b=a+1',
 				'preferences': {'minifyAssignedGlobalVars': true}
 			},
 			{
 				'description': 'Global identifier assigned after variables of other kinds should be generated after them in alphabetical order when using minifyAssignedGlobalVars',
-				'original': 'local a = 1;global_var = 2',
+				'original': 'local a = 1; global_var = 2',
 				'minified': 'local a=1;b=2',
 				'preferences': {'minifyAssignedGlobalVars': true}
 			},
@@ -2154,7 +2158,7 @@
 				'preferences': {'minifyAssignedGlobalVars': true}
 			},
 			{
-				'description': 'Global identifier assigned before usage and starting with underscore should not be shortened even when using minifyAssignedGlobalVars',
+				'description': 'Global identifier assigned but starting with underscore should not be shortened even when using minifyAssignedGlobalVars',
 				'original': '_protected_global = 1',
 				'minified': '_protected_global=1',
 				'preferences': {'minifyAssignedGlobalVars': true}
@@ -2164,6 +2168,54 @@
 				'original': 'if true then local homonymous_var1 = 1 end;homonymous_var1();t.homonymous_var2 = 3;homonymous_var2()',
 				'minified': 'if true then local a=1 end;homonymous_var1()t.b=3;homonymous_var2()',
 				'preferences': {'minifyMemberNames': true, 'minifyAssignedGlobalVars': true}
+			},
+			{
+				'description': 'Global function declaration identifier and further usage should be shortened when using minifyGlobalFunctions',
+				'original': 'function foo() end; foo()',
+				'minified': 'function a()end;a()',
+				'preferences': {'minifyGlobalFunctions': true}
+			},
+			{
+				'description': 'Global function usages before declaration should not be shortened when using minifyGlobalFunctions (case to avoid)',
+				'original': 'foo(); function foo() end',
+				'minified': 'foo()function a()end',
+				'preferences': {'minifyGlobalFunctions': true}
+			},
+			{
+				'description': 'Global function declaration identifier starting with underscore should not be shortened even when using minifyGlobalFunctions',
+				'original': 'function _protected_global() end',
+				'minified': 'function _protected_global()end',
+				'preferences': {'minifyGlobalFunctions': true}
+			},
+			{
+				'description': 'Member function declaration should not be shortened when using minifyGlobalFunctions but not minifyMemberNames',
+				'original': 'function t:bar() end',
+				'minified': 'function t:bar()end',
+				'preferences': {'minifyMemberNames': false, 'minifyGlobalFunctions': true}
+			},
+			{
+				'description': 'Global function call of undeclared function, but with same name as a previously minified unrelated function should not be shortened when using minifyGlobalFunctions',
+				'original': 'if true then local function foo() end end;foo();function t:bar() end;bar()',
+				'minified': 'if true then local function a()end end;foo()function t:b()end;bar()',
+				'preferences': {'minifyMemberNames': true, 'minifyGlobalFunctions': true}
+			},
+			{
+				'description': 'Global identifier assigned to function should be shortened, but not global function declaration identifier, when using minifyAssignedGlobalVars but not minifyGlobalFunctions',
+				'original': 'bar = function () end;function foo() end',
+				'minified': 'a=function()end;function foo()end',
+				'preferences': {'minifyAssignedGlobalVars': true}
+			},
+			{
+				'description': 'Global function declaration identifier should be shortened, but not global identifier assigned to function, when using minifyGlobalFunctions but not minifyAssignedGlobalVars',
+				'original': 'bar = function () end;function foo() end',
+				'minified': 'bar=function()end;function a()end',
+				'preferences': {'minifyGlobalFunctions': true}
+			},
+			{
+				'description': 'Both global identifier assigned to function and global function declaration identifier should be shortened when using minifyAssignedGlobalVars and minifyGlobalFunctions',
+				'original': 'bar = function () end;function foo() end',
+				'minified': 'a=function()end;function b()end',
+				'preferences': {'minifyAssignedGlobalVars': true, 'minifyGlobalFunctions': true}
 			},
 			{
 				'description': 'Global identifier should be shortened when using minifyAllGlobalVars',

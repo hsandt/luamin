@@ -122,7 +122,7 @@
 	var currentIdentifier;
 	var identifierMap;
 	var identifiersInUse;
-	var assignedGlobalIdentifiers;
+	var shortenedGlobalIdentifiers;
 	var generateIdentifier = function(originalName) {
 		// Preserve `self` in methods
 		if (originalName == 'self') {
@@ -255,8 +255,8 @@
 			// When using minifyAllGlobalVars, all global vars not starting with '_' have already been minified
 			// to pre-fill identifierMap and identifiersInUse, and we always call generateIdentifier, but only to find the existing mapping.
 
-			// When using minifyAssignedGlobalVars, we should only minify globals that have already been assigned previously
-			// (we assume that all global assignments have been done previously in the code), so those registered in identifierMap.
+			// When using minifyAssignedGlobalVars or minifyGlobalFunctions, we should only minify globals that have already been shortened previously
+			// (we assume that all global assignments have been done previously in the code), so those registered in shortenedGlobalIdentifiers.
 
 			// In both cases, the '_' check is optional as globals starting with _ have been protected during pre-pass on ast.globals in minify.
 			result = options.forceGenerateIdentifiers ||
@@ -265,7 +265,7 @@
 						expression.isLocal ||
 						(
 							preferences.minifyAllGlobalVars ||
-							preferences.minifyAssignedGlobalVars && indexOf(assignedGlobalIdentifiers, expression.name) > -1
+							indexOf(shortenedGlobalIdentifiers, expression.name) > -1
 						) && expression.name.substr(0, 1) != "_"
 					) && !options.preserveIdentifiers
 				)
@@ -476,13 +476,15 @@
 				var expressionType = variable.type;
 
 				// when using minifyAssignedGlobalVars, detect `global_var = value` patterns to register global_var as an assigned global identifier,
-				// also generate the identifier now since we want to minify the name in the assignment itself
+				// optionally, we can also generate the identifier now so formatExpression will just have to find the existing mapping
+				//  (else formatExpression would generate it on its own anyway)
 				// check that the expression type is Identifier, as we are not interested in global_table.member = value (as global_table would have
 				//  been assigned previously, and member minification is done with another option, minifyMemberNames)
 				// this, however, includes `global_a, global_b = value1, value2`` which is split into `global_a = value1`, `global_b = value2` on parsing
-				// as usual, ignore variables starting with '_'
-				if (expressionType == 'Identifier' && !variable.isLocal && preferences.minifyAssignedGlobalVars && variable.name.substr(0, 1) != "_") {
-					assignedGlobalIdentifiers.push(variable.name);
+				// as usual, ignore variables starting with '_', but the check is optional as globals starting with _ have been protected during pre-pass
+				//  on ast.globals in minify.
+				if (preferences.minifyAssignedGlobalVars && expressionType == 'Identifier' && !variable.isLocal && variable.name.substr(0, 1) != "_") {
+					shortenedGlobalIdentifiers.push(variable.name);
 					generateIdentifier(variable.name);
 				}
 
@@ -587,6 +589,20 @@
 
 		} else if (statementType == 'FunctionDeclaration') {
 
+			// global functions declared with assignment `foo = function() end` are automatically minified
+			//   by minifyAssignedGlobalVars
+			// however, minifyGlobalFunctions allows to minify the alternative writing `function foo() end`
+			//   but `foo` would be parsed below in formatExpression as any global identifier,
+			//   without knowing the context (i.e. we are not in an assignment but in an equivalent function declaration)
+			// so, similarly to the AssignmentStatement case above with minifyAssignedGlobalVars, we handle this
+			//  at the statement level before diving in formatExpression (and again, we can optionally generate the ID now)
+			// as usual, ignore variables starting with '_', but the check is optional as globals starting with _ have been protected during pre-pass
+			//  on ast.globals in minify.
+			if (preferences.minifyGlobalFunctions && statement.identifier.type == 'Identifier' && !statement.isLocal && statement.identifier.name.substr(0, 1) != "_") {
+				shortenedGlobalIdentifiers.push(statement.identifier.name);
+				generateIdentifier(statement.identifier.name);
+			}
+
 			result = (statement.isLocal ? 'local ' : '') + 'function ';
 			result += formatExpression(statement.identifier, preferences);
 			result += '(';
@@ -674,6 +690,7 @@
 			'minifyMemberNames': false,
 			'minifyTableKeyStrings': false,
 			'minifyAssignedGlobalVars': false,
+			'minifyGlobalFunctions': false,
 			'minifyAllGlobalVars': false,
 		}, preferences);
 
@@ -685,9 +702,11 @@
 
 		// (Re)set temporary identifier values
 		identifierMap = {};
-		// consider using hash sets instead of arrays for contains check performance
+		// Consider using hash sets instead of arrays for contains check performance
 		identifiersInUse = [];
-		assignedGlobalIdentifiers = [];
+		// Array of global identifiers that should be shortened on declaration and for any further usage
+		// (only used with minifyAssignedGlobalVars and minifyGlobalFunctions; minifyAllGlobalVars doesn't need it and simply shortens all global identifiers)
+		shortenedGlobalIdentifiers = [];
 		// This is a shortcut to help generate the first identifier (`a`) faster
 		currentIdentifier = '9';
 
@@ -696,7 +715,7 @@
 		if (ast.globals) {
 			each(ast.globals, function(object) {
 				var name = object.name;
-				if (!(preferences.minifyAssignedGlobalVars || preferences.minifyAllGlobalVars) || name.substr(0, 1) == "_") {
+				if (!(preferences.minifyAssignedGlobalVars || preferences.minifyGlobalFunctions || preferences.minifyAllGlobalVars) || name.substr(0, 1) == "_") {
 					identifierMap[name] = name;
 					identifiersInUse.push(name);
 				} else {
