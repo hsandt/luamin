@@ -2218,6 +2218,24 @@
 				'preferences': {'minifyAssignedGlobalVars': true, 'minifyGlobalFunctions': true}
 			},
 			{
+				'description': 'Non-assigned/defined global identifiers should not be valid shortened identifiers for other variables (skipped) when using minifyAssignedGlobalVars and minifyGlobalFunctions',
+				'original': 'local b = 1;a()',
+				'minified': 'local b=1;a()',
+				'preferences': {'minifyAssignedGlobalVars': true, 'minifyGlobalFunctions': true}
+			},
+			{
+				'description': 'Assigned/defined global identifiers should not be valid shortened identifiers for other variables (skipped and never returned to, as we don\'t know if they will be shortened themselves at this point) before declaration is met when using minifyAssignedGlobalVars and minifyGlobalFunctions',
+				'original': 'local b = 1; a = 2; local c = 3',
+				'minified': 'local b=1;a=2;local c=3',
+				'preferences': {'minifyAssignedGlobalVars': true, 'minifyGlobalFunctions': true}
+			},
+			{
+				'description': 'Assigned/defined global identifiers should become valid shortened identifiers for other variables after declaration is met when using minifyAssignedGlobalVars and minifyGlobalFunctions',
+				'original': 'b = 1; local a = 1',
+				'minified': 'a=1;local b=1',
+				'preferences': {'minifyAssignedGlobalVars': true, 'minifyGlobalFunctions': true}
+			},
+			{
 				'description': 'Global identifier should be shortened when using minifyAllGlobalVars',
 				'original': 'global_var = 1;local a = 2',
 				'minified': 'a=1;local b=2',
