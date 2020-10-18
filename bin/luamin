@@ -74,7 +74,7 @@
 				'  -k, --minify-table-key-strings\tforce minification of table key strings not starting with \'_\'',
 				'  -G, --minify-assigned-global-vars\tforce minification of assigned global variables (not native nor defined in external file) not starting with \'_\'.',
 				'                                   \tThis only works when global variables are assigned before usage in the code, so if you need early usage, you should',
-				'                                   \tadd a dummy assignment like `my_global = nil` before any usage in code.',
+				'                                   \tadd a dummy assignment like `my_global = nil` before any usage in code (unfortunately this prevents checking for `my_global == nil` first).',
 				'  -F, --minify-global-functions\tforce minification of all global function declarations when name is not starting with \'_\'. Strongly recommended with --minify-assigned-global-vars, since function foo() ... is a common alternative to foo = function() ...',
 				'  -g, --minify-all-global-vars\tforce minification of all global variables not starting with \'_\'. Stronger than --minify-assigned-global-vars, only use one or the other.',
 				'\nExamples:\n',
