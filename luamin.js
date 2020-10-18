@@ -144,7 +144,7 @@
 					IDENTIFIER_PARTS[index + 1] + generateZeroes(length - (position + 1));
 				if (
 					isKeyword(currentIdentifier) ||
-					indexOf(identifiersInUse, currentIdentifier) > -1
+					identifiersInUse.has(currentIdentifier)
 				) {
 					return generateIdentifier(originalName);
 				}
@@ -154,7 +154,7 @@
 			--position;
 		}
 		currentIdentifier = 'a' + generateZeroes(length);
-		if (indexOf(identifiersInUse, currentIdentifier) > -1) {
+		if (identifiersInUse.has(currentIdentifier)) {
 			return generateIdentifier(originalName);
 		}
 		identifierMap[originalName] = currentIdentifier;
@@ -253,7 +253,7 @@
 			// they don't start with '_'.
 
 			// When using minifyAllGlobalVars, all global vars not starting with '_' have already been minified
-			// to pre-fill identifierMap and identifiersInUse, and we always call generateIdentifier, but only to find the existing mapping.
+			// to pre-fill identifierMap and identifiersInUse, aSet() we always call generateIdentifier, but only to find the existing mapping.
 
 			// When using minifyAssignedGlobalVars or minifyGlobalFunctions, we should only minify globals that have already been shortened previously
 			// (we assume that all global assignments have been done previously in the code), so those registered in shortenedGlobalIdentifiers.
@@ -265,7 +265,7 @@
 						expression.isLocal ||
 						(
 							preferences.minifyAllGlobalVars ||
-							indexOf(shortenedGlobalIdentifiers, expression.name) > -1
+							shortenedGlobalIdentifiers.has(expression.name)
 						) && expression.name.substr(0, 1) != "_"
 					) && !options.preserveIdentifiers
 				)
@@ -484,7 +484,7 @@
 				// as usual, ignore variables starting with '_', but the check is optional as globals starting with _ have been protected during pre-pass
 				//  on ast.globals in minify.
 				if (preferences.minifyAssignedGlobalVars && expressionType == 'Identifier' && !variable.isLocal && variable.name.substr(0, 1) != "_") {
-					shortenedGlobalIdentifiers.push(variable.name);
+					shortenedGlobalIdentifiers.add(variable.name);
 					generateIdentifier(variable.name);
 				}
 
@@ -599,7 +599,7 @@
 			// as usual, ignore variables starting with '_', but the check is optional as globals starting with _ have been protected during pre-pass
 			//  on ast.globals in minify.
 			if (preferences.minifyGlobalFunctions && statement.identifier.type == 'Identifier' && !statement.isLocal && statement.identifier.name.substr(0, 1) != "_") {
-				shortenedGlobalIdentifiers.push(statement.identifier.name);
+				shortenedGlobalIdentifiers.add(statement.identifier.name);
 				generateIdentifier(statement.identifier.name);
 			}
 
@@ -702,11 +702,10 @@
 
 		// (Re)set temporary identifier values
 		identifierMap = {};
-		// Consider using hash sets instead of arrays for contains check performance
-		identifiersInUse = [];
-		// Array of global identifiers that should be shortened on declaration and for any further usage
+		identifiersInUse = new Set();
+		// Set of global identifiers that should be shortened on declaration and for any further usage
 		// (only used with minifyAssignedGlobalVars and minifyGlobalFunctions; minifyAllGlobalVars doesn't need it and simply shortens all global identifiers)
-		shortenedGlobalIdentifiers = [];
+		shortenedGlobalIdentifiers = new Set();
 		// This is a shortcut to help generate the first identifier (`a`) faster
 		currentIdentifier = '9';
 
@@ -717,7 +716,7 @@
 				var name = object.name;
 				if (!(preferences.minifyAssignedGlobalVars || preferences.minifyGlobalFunctions || preferences.minifyAllGlobalVars) || name.substr(0, 1) == "_") {
 					identifierMap[name] = name;
-					identifiersInUse.push(name);
+					identifiersInUse.add(name);
 				} else {
 					// minifyAssignedGlobalVars should wait for assignment checking to see which global variables should be minified
 					// minifyAllGlobalVars, however, knows we will minify them all, so we just generate the shortened identifiers now
