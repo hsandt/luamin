@@ -486,6 +486,17 @@
 				//  on ast.globals in minify.
 				if (preferences.minifyAssignedGlobalVars && expressionType == 'Identifier' && !variable.isLocal && variable.name.substr(0, 1) != "_" &&
 						!shortenedGlobalIdentifiers.has(variable.name)) {
+					// we have pre-emptively protected all global identifiers, waiting and see if we find an assignment for them
+					// we found one for this variable name, so remove it from the protected set (and identifier map entry to itself)
+					// ! this is very risky as unrelated identifiers (esp. members) may have the same name and if there are occurrences
+					// before and after the assignment, they will start being shortened in the middle of the code, breaking code
+					// this can be fixed by either storing local and member shortened identifier map in a separate map from global identifiers
+					//  (or just using globalIdentifiersInUse as suggested where identifiersInUse is filled, since the map just maps global ids to themselves)
+					// or parsing the code to find all assigned global variables and unprotected them in a first pass, then minify the code
+					delete identifierMap[variable.name];
+					identifiersInUse.delete(variable.name);
+
+					// register identifier as a global id to shorten, and shorten it now while we're at it (second step is optional)
 					shortenedGlobalIdentifiers.add(variable.name);
 					generateIdentifier(variable.name);
 				}
@@ -603,6 +614,10 @@
 			//   on ast.globals in minify.
 			if (preferences.minifyGlobalFunctions && statement.identifier.type == 'Identifier' && !statement.isLocal && statement.identifier.name.substr(0, 1) != "_" &&
 					!shortenedGlobalIdentifiers.has(statement.identifier.name)) {
+				// unprotect identifier, see comment in similar block in 'AssignmentStatement' case
+				delete identifierMap[statement.identifier.name];
+				identifiersInUse.delete(statement.identifier.name);
+
 				shortenedGlobalIdentifiers.add(statement.identifier.name);
 				generateIdentifier(statement.identifier.name);
 			}
@@ -719,17 +734,27 @@
 		if (ast.globals) {
 			each(ast.globals, function(object) {
 				var name = object.name;
-				if (!(preferences.minifyAssignedGlobalVars || preferences.minifyGlobalFunctions || preferences.minifyAllGlobalVars) || name.substr(0, 1) == "_") {
+				if (!preferences.minifyAllGlobalVars || name.substr(0, 1) == "_") {
+					// general case (no preferences) should protect all global identifiers
+					// note that this identifiersInUse is checked in generateIdentifier, which doesn't know about local/member/global
+					//  so this will also protect local and member variables that happen to have the same name as a protected global
+					//  this may be fixed by renaming identifiersInUse -> globalIdentifiersInUse and checking them at a higher level
+					//  (when we know whether identifier is local/member or global)
+					// minifyAssignedGlobalVars and minifyGlobalFunctions should wait for declaration check
+					//   to see which global variables should be minified
+					// in the meantime, we protect the name as if we knew they were external globals
+					//   so no other variable gets minified with a name like this one
+					// when finding a global declaration later, we will release the name
+					// worst case, the declaration is found too late and we skips a name that would eventually
+					//   be released, but this is fine
 					identifierMap[name] = name;
 					identifiersInUse.add(name);
 				} else {
-					// minifyAssignedGlobalVars should wait for assignment checking to see which global variables should be minified
-					// minifyAllGlobalVars, however, knows we will minify them all, so we just generate the shortened identifiers now
+					// minifyAllGlobalVars is true here, so we know we will minify all globals and can
+					// generate the shortened identifier now
 					// (optional as they would be minified eventually during formatStatementList, but convenient to spot globals
 					// as they will have the first minified names in the alphabetical order, namely 'a', 'b', etc.)
-					if (preferences.minifyAllGlobalVars) {
-						generateIdentifier(name);
-					}
+					generateIdentifier(name);
 				}
 			});
 		} else {

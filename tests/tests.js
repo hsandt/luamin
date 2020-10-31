@@ -2140,6 +2140,11 @@
 				'minified': 'global_var=1;local a=2'
 			},
 			{
+				'description': 'Local and member identifier with same name as global identifier should not be shortened by default (limitation)',
+				'original': 'if true then local homonymous_var = 1 end;homonymous_var = 2',
+				'minified': 'if true then local homonymous_var=1 end;homonymous_var=2'
+			},
+			{
 				'description': 'Global identifier assigned and further usage should be shortened when using minifyAssignedGlobalVars',
 				'original': 'global_var = 1; local a = global_var + 1',
 				'minified': 'a=1;local b=a+1',
@@ -2164,9 +2169,15 @@
 				'preferences': {'minifyAssignedGlobalVars': true}
 			},
 			{
-				'description': 'Global identifier not assigned, but with same name as a previously minified unrelated symbol should not be shortened when using minifyAssignedGlobalVars',
+				'description': 'Global identifier not assigned, but with same name as a previously minified unrelated local/member identifier should not be shortened when using minifyAssignedGlobalVars, and unrelated identifier will not be shortened either (case to avoid)',
 				'original': 'if true then local homonymous_var1 = 1 end;homonymous_var1();t.homonymous_var2 = 3;homonymous_var2()',
-				'minified': 'if true then local a=1 end;homonymous_var1()t.b=3;homonymous_var2()',
+				'minified': 'if true then local homonymous_var1=1 end;homonymous_var1()t.homonymous_var2=3;homonymous_var2()',
+				'preferences': {'minifyMemberNames': true, 'minifyAssignedGlobalVars': true}
+			},
+			{
+				'description': 'Global identifier assigned, but with same name as a previously minified unrelated member identifier should be shortened when using minifyAssignedGlobalVars, and unrelated identifier will also be shortened, but only after assignment, breaking code (case to avoid)',
+				'original': 't.homonymous_var = 1;homonymous_var = 2;t.homonymous_var = 3',
+				'minified': 't.homonymous_var=1;a=2;t.a=3',
 				'preferences': {'minifyMemberNames': true, 'minifyAssignedGlobalVars': true}
 			},
 			{
@@ -2194,9 +2205,9 @@
 				'preferences': {'minifyMemberNames': false, 'minifyGlobalFunctions': true}
 			},
 			{
-				'description': 'Global function call of undeclared function, but with same name as a previously minified unrelated function should not be shortened when using minifyGlobalFunctions',
+				'description': 'Global function call of undeclared function, but with same name as a previously minified unrelated function should not be shortened when using minifyGlobalFunctions, and unrelated identifier will not be shortened either (case to avoid)',
 				'original': 'if true then local function foo() end end;foo();function t:bar() end;bar()',
-				'minified': 'if true then local function a()end end;foo()function t:b()end;bar()',
+				'minified': 'if true then local function foo()end end;foo()function t:bar()end;bar()',
 				'preferences': {'minifyMemberNames': true, 'minifyGlobalFunctions': true}
 			},
 			{
@@ -2226,7 +2237,7 @@
 			{
 				'description': 'Assigned/defined global identifiers should not be valid shortened identifiers for other variables (skipped and never returned to, as we don\'t know if they will be shortened themselves at this point) before declaration is met when using minifyAssignedGlobalVars and minifyGlobalFunctions',
 				'original': 'local b = 1; a = 2; local c = 3',
-				'minified': 'local b=1;a=2;local c=3',
+				'minified': 'local b=1;c=2;local d=3',
 				'preferences': {'minifyAssignedGlobalVars': true, 'minifyGlobalFunctions': true}
 			},
 			{
@@ -2254,9 +2265,9 @@
 				'preferences': {'minifyAllGlobalVars': true}
 			},
 			{
-				'description': 'Global identifier should be shortened when using both minifyAssignedGlobalVars and minifyAllGlobalVars (the latter covers the first one)',
+				'description': 'Global identifier should be shortened when using both minifyAssignedGlobalVars and minifyAllGlobalVars (the latter covers the first one), but yet unassigned global names will be protected and may cause name skipping if early in the alphabet',
 				'original': 'global_var = 1;local a = 2',
-				'minified': 'a=1;local b=2',
+				'minified': 'b=1;local c=2',
 				'preferences': {'minifyAssignedGlobalVars': true, 'minifyAllGlobalVars': true}
 			}
 		],
